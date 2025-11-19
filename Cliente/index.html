@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tester de API Municipal</title>
+    <style>
+        :root {
+            --primary: #26A69A;
+            --secondary: #2979FF;
+            --danger: #FF5252;
+            --bg: #ECEFF1;
+            --card: #ffffff;
+            --text: #212121;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1.5fr;
+            gap: 20px;
+        }
+
+        h1 { color: var(--primary); text-align: center; grid-column: 1 / -1; }
+        h2 { color: var(--secondary); border-bottom: 2px solid var(--secondary); padding-bottom: 5px; }
+
+        .card {
+            background: var(--card);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 0.9em; }
+        input, textarea, select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            width: 100%;
+            transition: background 0.3s;
+        }
+        button:hover { background-color: #1e877d; }
+        button.secondary { background-color: var(--secondary); }
+        button.danger { background-color: var(--danger); margin-top: 5px; }
+
+        .task-item {
+            background: #f9f9f9;
+            border-left: 5px solid var(--primary);
+            padding: 10px;
+            margin-bottom: 10px;
+            position: relative;
+        }
+        .task-meta { font-size: 0.8em; color: #666; margin-top: 5px; }
+        
+        #status {
+            grid-column: 1 / -1;
+            padding: 10px;
+            text-align: center;
+            border-radius: 4px;
+            display: none;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+
+        /* Responsive para móviles */
+        @media (max-width: 768px) {
+            .container { grid-template-columns: 1fr; }
+        }
+
+        /* ... resto de tus estilos ... */
+
+        /* AGREGA ESTO PARA EL SCROLL INTERNO */
+        #taskList {
+            max-height: 500px;       /* Altura máxima del contenedor */
+            overflow-y: auto;        /* Muestra scroll vertical si se pasa de altura */
+            padding-right: 10px;     /* Espacio para que el texto no pegue con la barra */
+            
+            /* Opcional: Borde interno sutil para diferenciar el área */
+            border-top: 1px solid #eee; 
+            margin-top: 10px;
+            padding-top: 10px;
+        }
+
+        /* Opcional: Estilo moderno para la barra de scroll (Webkit: Chrome, Edge, Safari) */
+        #taskList::-webkit-scrollbar {
+            width: 8px;
+        }
+        #taskList::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+            border-radius: 4px;
+        }
+        #taskList::-webkit-scrollbar-thumb {
+            background: #ccc; 
+            border-radius: 4px;
+        }
+        #taskList::-webkit-scrollbar-thumb:hover {
+            background: var(--primary); /* Se pone del color principal al pasar el mouse */
+        }
+
+    </style>
+</head>
+<body>
+
+    <h1>🔧 Tester de Backend Municipal</h1>
+    
+    <div id="status"></div>
+
+    <div class="container">
+        
+        <div class="card">
+            <h2>Nueva Tarea</h2>
+            <form id="taskForm">
+                <input type="hidden" id="taskId"> <div class="form-group">
+                    <label>Título</label>
+                    <input type="text" id="titulo" placeholder="Ej: Reparar luminaria" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Descripción</label>
+                    <textarea id="descripcion" rows="3" placeholder="Detalles de la tarea..." required></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>ID Proyecto (FK)</label>
+                    <input type="number" id="id_proyecto" placeholder="1" required>
+                </div>
+
+                <div class="form-group">
+                    <label>ID Estado (FK)</label>
+                    <input type="number" id="id_estado" placeholder="1 (Pendiente)" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Fecha Inicio</label>
+                    <input type="date" id="fecha_inicio" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Fecha Fin</label>
+                    <input type="date" id="fecha_fin" required>
+                </div>
+
+                <button type="submit" id="btnSave">Guardar Tarea (POST)</button>
+                <button type="button" id="btnUpdate" class="secondary" style="display:none;">Actualizar Tarea (PUT)</button>
+                <button type="button" onclick="resetForm()" style="background-color: #999; margin-top: 10px;">Limpiar Formulario</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h2>Lista de Tareas</h2>
+                <button onclick="fetchTasks()" style="width: auto; font-size: 0.8em;">🔄 Recargar</button>
+            </div>
+            <div id="taskList">
+                <p style="color: #666; text-align: center;">Cargando tareas...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // CONFIGURACIÓN: CAMBIA ESTO POR LA URL DE TU SERVIDOR
+        const API_URL = 'http://localhost:3000/api'; 
+
+        // --- 1. LEER TAREAS (GET) ---
+        async function fetchTasks() {
+            const listContainer = document.getElementById('taskList');
+            listContainer.innerHTML = '<p>Cargando...</p>';
+
+            try {
+                const response = await fetch(`${API_URL}/tareas`);
+                if (!response.ok) throw new Error('Error al obtener tareas');
+                const tasks = await response.json();
+
+                listContainer.innerHTML = '';
+                
+                if (tasks.length === 0) {
+                    listContainer.innerHTML = '<p>No hay tareas registradas.</p>';
+                    return;
+                }
+
+                tasks.forEach(task => {
+                    // Ajusta nombres de campos según tu DB real (ej: fecha_creacion vs created_at)
+                    const div = document.createElement('div');
+                    div.className = 'task-item';
+                    div.innerHTML = `
+                        <strong>${task.titulo}</strong>
+                        <p style="margin: 5px 0;">${task.descripcion}</p>
+                        <div class="task-meta">
+                            📅 Inicio: ${formatDate(task.fecha_inicio)} | Fin: ${formatDate(task.fecha_fin)} <br>
+                            🏗 Proy: ${task.id_proyecto} | 📊 Estado: ${task.id_estado}
+                        </div>
+                        <div style="margin-top: 10px;">
+                            <button onclick='loadForEdit(${JSON.stringify(task)})' class="secondary" style="width: auto; padding: 5px 10px;">Editar</button>
+                            <button onclick="deleteTask(${task.id_tarea || task.id})" class="danger" style="width: auto; padding: 5px 10px;">Eliminar</button>
+                        </div>
+                    `;
+                    listContainer.appendChild(div);
+                });
+            } catch (error) {
+                showStatus('Error de conexión: ' + error.message, 'error');
+                listContainer.innerHTML = '<p style="color:red">Error al conectar con el backend.</p>';
+            }
+        }
+
+        // --- 2. CREAR TAREA (POST) ---
+        document.getElementById('taskForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            // Si el botón de actualizar está visible, no hacemos submit normal
+            if(document.getElementById('btnUpdate').style.display !== 'none') return;
+
+            const data = getFormData();
+
+            try {
+                const response = await fetch(`${API_URL}/tareas`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showStatus('Tarea creada con éxito', 'success');
+                    resetForm();
+                    fetchTasks();
+                } else {
+                    showStatus('Error: ' + (result.mensaje || 'Desconocido'), 'error');
+                }
+            } catch (error) {
+                showStatus('Error de red', 'error');
+            }
+        });
+
+        // --- 3. ACTUALIZAR TAREA (PUT) ---
+        document.getElementById('btnUpdate').addEventListener('click', async () => {
+            const id = document.getElementById('taskId').value;
+            const data = getFormData();
+
+            try {
+                const response = await fetch(`${API_URL}/tareas/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                if (response.ok) {
+                    showStatus('Tarea actualizada correctamente', 'success');
+                    resetForm();
+                    fetchTasks();
+                } else {
+                    showStatus('Error al actualizar', 'error');
+                }
+            } catch (error) {
+                showStatus('Error de red al actualizar', 'error');
+            }
+        });
+
+        // --- 4. ELIMINAR TAREA (DELETE) ---
+        async function deleteTask(id) {
+            if(!confirm('¿Estás seguro de borrar esta tarea?')) return;
+
+            try {
+                const response = await fetch(`${API_URL}/tareas/${id}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    showStatus('Tarea eliminada', 'success');
+                    fetchTasks();
+                } else {
+                    showStatus('Error al eliminar', 'error');
+                }
+            } catch (error) {
+                showStatus('Error de red al eliminar', 'error');
+            }
+        }
+
+        // --- UTILIDADES ---
+        function getFormData() {
+            return {
+                titulo: document.getElementById('titulo').value,
+                descripcion: document.getElementById('descripcion').value,
+                id_proyecto: document.getElementById('id_proyecto').value,
+                id_estado: document.getElementById('id_estado').value,
+                fecha_inicio: document.getElementById('fecha_inicio').value,
+                fecha_fin: document.getElementById('fecha_fin').value
+            };
+        }
+
+        function loadForEdit(task) {
+            document.getElementById('taskId').value = task.id_tarea || task.id; // Ajustar según nombre de PK
+            document.getElementById('titulo').value = task.titulo;
+            document.getElementById('descripcion').value = task.descripcion;
+            document.getElementById('id_proyecto').value = task.id_proyecto;
+            document.getElementById('id_estado').value = task.id_estado;
+            // Formatear fecha para input date (YYYY-MM-DD)
+            document.getElementById('fecha_inicio').value = task.fecha_inicio.split('T')[0];
+            document.getElementById('fecha_fin').value = task.fecha_fin.split('T')[0];
+
+            // Cambiar botones
+            document.getElementById('btnSave').style.display = 'none';
+            document.getElementById('btnUpdate').style.display = 'block';
+            window.scrollTo(0,0);
+            showStatus('Modo Edición: Modifica los datos y pulsa Actualizar', 'success');
+        }
+
+        function resetForm() {
+            document.getElementById('taskForm').reset();
+            document.getElementById('btnSave').style.display = 'block';
+            document.getElementById('btnUpdate').style.display = 'none';
+            document.getElementById('taskId').value = '';
+        }
+
+        function showStatus(msg, type) {
+            const el = document.getElementById('status');
+            el.textContent = msg;
+            el.className = type;
+            el.style.display = 'block';
+            setTimeout(() => el.style.display = 'none', 4000);
+        }
+
+        function formatDate(dateString) {
+            if(!dateString) return '';
+            const date = new Date(dateString);
+            return date.toLocaleDateString();
+        }
+
+        // Cargar al inicio
+        fetchTasks();
+    </script>
+</body>
+</html>

@@ -1,24 +1,19 @@
 const pool = require("../mysql");
 
-const bienvenido = (req, res) => {
-  res.send("<h1> Bienvenido al tablero de tareas </h1>");
-};
-
 const lista_tareas = async (req, res) => {
   try {
     const [respuesta] = await pool.query(
-    "SELECT * FROM tarea ORDER BY fecha_creacion ASC"
+      "SELECT * FROM tarea ORDER BY fecha_creacion ASC"
     );
-
-    if(respuesta[0].length === 0){
+    
+    // CORRECCIÓN 1: Verificar el largo del array, no del índice 0
+    if(respuesta.length === 0){
       return res.status(404).json({ mensaje: "No se encontraron registros" });
     }
 
     res.status(200).json(respuesta);
   } catch (error) {
-    return res
-    .status(500)
-    .json({ mensaje: "Error en el servidor", error: error.message });
+    return res.status(500).json({ mensaje: "Error en el servidor", error: error.message });
   }
 };
 
@@ -77,46 +72,24 @@ const insertar_tarea = async (req, res) => {
 };
 
 const actualizar_tarea_por_id = async (req, res) => {
-  const {
-    titulo,
-    descripcion,
-    id_proyecto,
-    id_estado,
-    fecha_inicio,
-    fecha_fin,
-  } = req.body;
+  const { titulo, descripcion, id_proyecto, id_estado, fecha_inicio, fecha_fin } = req.body;
 
-  if (
-    !titulo ||
-    !descripcion ||
-    !id_proyecto ||
-    !id_estado ||
-    !fecha_inicio ||
-    !fecha_fin
-  ) {
-    res.status(400).json({ mensaje: "Faltan datos obligatorios" });
+  if (!titulo || !descripcion || !id_proyecto || !id_estado || !fecha_inicio || !fecha_fin) {
+    // CORRECCIÓN 2: Agregar return para detener la ejecución
+    return res.status(400).json({ mensaje: "Faltan datos obligatorios" });
   }
 
   try {
     const [respuesta] = await pool.query(
       "CALL actualizar_tarea(?, ?, ?, ?, ?, ?, ?)",
-      [
-        req.params.id,
-        titulo,
-        descripcion,
-        id_proyecto,
-        id_estado,
-        fecha_inicio,
-        fecha_fin,
-      ]
+      [req.params.id, titulo, descripcion, id_proyecto, id_estado, fecha_inicio, fecha_fin]
     );
 
-    res
-      .status(201)
-      .json({ mensaje: "Tarea creada exitosamente", resultado: respuesta[0] });
+    // CORRECCIÓN 3: Mensaje correcto y status 200
+    res.status(200).json({ mensaje: "Tarea actualizada exitosamente", resultado: respuesta[0] });
   } catch (error) {
-    console.error("Error al insertar tarea:", error);
-    res.status(500).json({ mensaje: "Ocurrió un error al crear la tarea" });
+    console.error("Error al actualizar tarea:", error);
+    res.status(500).json({ mensaje: "Ocurrió un error al actualizar la tarea" });
   }
 };
 
@@ -139,7 +112,6 @@ const eliminar_tarea_por_id = async (req, res) => {
 };
 
 module.exports = {
-  bienvenido,
   lista_tareas,
   buscar_tarea_por_id,
   actualizar_tarea_por_id,
